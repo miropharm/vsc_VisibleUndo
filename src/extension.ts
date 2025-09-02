@@ -1,37 +1,35 @@
 import * as vscode from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Undo Cursor Fixer active');
+    console.log('Undo Cursor Stabilizer active');
 
-    // Seçimi saklamak için değişken
-    let lastSelections: vscode.Selection[] = [];
+    let beforeUndo: vscode.Selection[] = [];
 
-    // Undo öncesi imleç konumunu sürekli güncelle
+    // Cursor her değiştiğinde "önceki"ni sakla
     vscode.window.onDidChangeTextEditorSelection((e) => {
         if (e.textEditor === vscode.window.activeTextEditor) {
-            lastSelections = e.selections.map(sel => new vscode.Selection(sel.start, sel.end));
+            beforeUndo = e.selections.map(sel => new vscode.Selection(sel.start, sel.end));
         }
     });
 
-    // Doküman değiştiğinde (Undo dahil)
-    const disposable = vscode.workspace.onDidChangeTextDocument((event) => {
+    // Undo tetiklendiğinde yakala
+    vscode.workspace.onDidChangeTextDocument((event) => {
         const editor = vscode.window.activeTextEditor;
         if (!editor || event.document !== editor.document) return;
 
-        if (event.reason === vscode.TextDocumentChangeReason.Undo && lastSelections.length > 0) {
-            // Undo’ya izin ver → VS Code istediğini yapsın
+        if (event.reason === vscode.TextDocumentChangeReason.Undo && beforeUndo.length > 0) {
+            // Cursor VS Code tarafından zıplatıldıktan hemen sonra geri koy
             setTimeout(() => {
                 try {
-                    editor.selections = lastSelections;
-                    editor.revealRange(new vscode.Range(
-                        lastSelections[0].active, lastSelections[0].active
-                    ));
-                } catch { /* boşver */ }
-            }, 150); // 150 ms sonra geri al (gerekirse artır/azalt)
+                    editor.selections = beforeUndo;
+                    editor.revealRange(
+                        new vscode.Range(beforeUndo[0].active, beforeUndo[0].active),
+                        vscode.TextEditorRevealType.Default
+                    );
+                } catch { /* ignore */ }
+            }, 50); // gerekirse 50 → 100 ms yap
         }
     });
-
-    context.subscriptions.push(disposable);
 }
 
 export function deactivate() {}
