@@ -1,0 +1,29 @@
+{
+  "name": "undo-highlighter",
+  "displayName": "Undo Highlighter",
+  "description": "Highlights and reveals the lines affected by Undo so you can see exactly what changed.",
+  "version": "0.0.1",
+  "publisher": "your-name",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {},
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "npx tsc -p ./",
+    "watch": "npx tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/vscode": "^1.80.0",
+    "tslib": "^2.5.0",
+    "typescript": "^5.0.0"
+  }
+}
