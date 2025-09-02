@@ -1,32 +1,47 @@
-import * as vscode from "vscode";
+import * as vscode from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
-  const decorationType = vscode.window.createTextEditorDecorationType({
-    backgroundColor: "rgba(255, 255, 0, 0.4)" // sarı highlight
-  });
+    console.log('Undo Highlighter extension is now active!');
 
-  vscode.workspace.onDidChangeTextDocument((event) => {
-    // sadece undo veya redo olaylarını yakalayalım
-    if (event.reason === vscode.TextDocumentChangeReason.Undo || event.reason === vscode.TextDocumentChangeReason.Redo) {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor || event.document !== editor.document) return;
+    const disposable = vscode.workspace.onDidChangeTextDocument((event) => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || event.document !== editor.document) {
+            return;
+        }
 
-      const ranges: vscode.Range[] = event.contentChanges.map(change => change.range);
+        // Sadece Undo için çalış
+        if (event.reason === vscode.TextDocumentChangeReason.Undo) {
+            // Undo öncesi cursor konumunu kaydet
+            const oldSelections = editor.selections.map(sel => new vscode.Selection(sel.start, sel.end));
 
-      // Highlight uygula
-      editor.setDecorations(decorationType, ranges);
+            event.contentChanges.forEach(change => {
+                const start = change.range.start.line;
+                const end = change.range.end.line;
 
-      // Görünen alana getir
-      if (ranges.length > 0) {
-        editor.revealRange(ranges[0], vscode.TextEditorRevealType.InCenter);
-      }
+                const range = new vscode.Range(
+                    new vscode.Position(start, 0),
+                    new vscode.Position(end, editor.document.lineAt(end).text.length)
+                );
 
-      // 2 saniye sonra highlight'ı kaldır
-      setTimeout(() => {
-        editor.setDecorations(decorationType, []);
-      }, 2000);
-    }
-  });
+                const decorationType = vscode.window.createTextEditorDecorationType({
+                    backgroundColor: "rgba(255, 0, 0, 0.3)"
+                });
+
+                editor.setDecorations(decorationType, [range]);
+
+                // 2 saniye sonra highlight silinsin
+                setTimeout(() => {
+                    editor.setDecorations(decorationType, []);
+                    decorationType.dispose();
+                }, 2000);
+            });
+
+            // Cursor'u eski yerine geri koy
+            editor.selections = oldSelections;
+        }
+    });
+
+    context.subscriptions.push(disposable);
 }
 
 export function deactivate() {}
