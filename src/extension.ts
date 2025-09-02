@@ -1,43 +1,33 @@
 import * as vscode from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Undo Highlighter extension is now active!');
+    console.log('Undo Cursor Fixer active');
 
+    // Seçimi saklamak için değişken
+    let lastSelections: vscode.Selection[] = [];
+
+    // Undo öncesi imleç konumunu sürekli güncelle
+    vscode.window.onDidChangeTextEditorSelection((e) => {
+        if (e.textEditor === vscode.window.activeTextEditor) {
+            lastSelections = e.selections.map(sel => new vscode.Selection(sel.start, sel.end));
+        }
+    });
+
+    // Doküman değiştiğinde (Undo dahil)
     const disposable = vscode.workspace.onDidChangeTextDocument((event) => {
         const editor = vscode.window.activeTextEditor;
-        if (!editor || event.document !== editor.document) {
-            return;
-        }
+        if (!editor || event.document !== editor.document) return;
 
-        // Sadece Undo için çalış
-        if (event.reason === vscode.TextDocumentChangeReason.Undo) {
-            // Undo öncesi cursor konumunu kaydet
-            const oldSelections = editor.selections.map(sel => new vscode.Selection(sel.start, sel.end));
-
-            event.contentChanges.forEach(change => {
-                const start = change.range.start.line;
-                const end = change.range.end.line;
-
-                const range = new vscode.Range(
-                    new vscode.Position(start, 0),
-                    new vscode.Position(end, editor.document.lineAt(end).text.length)
-                );
-
-                const decorationType = vscode.window.createTextEditorDecorationType({
-                    backgroundColor: "rgba(255, 0, 0, 0.3)"
-                });
-
-                editor.setDecorations(decorationType, [range]);
-
-                // 2 saniye sonra highlight silinsin
-                setTimeout(() => {
-                    editor.setDecorations(decorationType, []);
-                    decorationType.dispose();
-                }, 2000);
-            });
-
-            // Cursor'u eski yerine geri koy
-            editor.selections = oldSelections;
+        if (event.reason === vscode.TextDocumentChangeReason.Undo && lastSelections.length > 0) {
+            // Undo’ya izin ver → VS Code istediğini yapsın
+            setTimeout(() => {
+                try {
+                    editor.selections = lastSelections;
+                    editor.revealRange(new vscode.Range(
+                        lastSelections[0].active, lastSelections[0].active
+                    ));
+                } catch { /* boşver */ }
+            }, 150); // 150 ms sonra geri al (gerekirse artır/azalt)
         }
     });
 
